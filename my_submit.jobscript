@@ -4,10 +4,10 @@
 To run this script with justin:
 
 justin simple-workflow \
-  --jobscript-git GBotogoske/my_grid/my_submit.jobscript \
-  --env NUM_EVENTS=10,FCL_FILE=standard_g4_protodunehd.fcl \
-  --scope user.gabrielb \
-  --output-pattern 'cosmics_g4.root:/pnfs/dune/scratch/users/gabrielb'
+  --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+  --env NUM_EVENTS=10,FCL_FILE=standard_g4_protodunehd.fcl
+
+  
 EOF
 
 # Set defaults
