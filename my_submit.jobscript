@@ -5,7 +5,9 @@ To run this script with justin:
 
 justin simple-workflow \
   --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
-  --env NUM_EVENTS=10,FCL_FILE=standard_g4_protodunehd.fcl
+  --env NUM_EVENTS=10,FCL_FILE=standard_g4_protodunehd.fcl \
+  --scope usertests --lifetime-days 2 \
+  --output-pattern '*.root:$FNALURL/$USERF' 
 
   
 EOF
