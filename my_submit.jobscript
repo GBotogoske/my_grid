@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# fcl file and DUNE software version/qualifier to be used
+FCL_FILE=${FCL_FILE:-standard_g4_protodunehd.fcl}
+DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
+DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
+
+# number of events to process from the input file
+if [ "$NUM_EVENTS" != "" ] ; then
+ events_option="-n $NUM_EVENTS"
+fi
+
+INPUT_FILE=${/exp/dune/app/users/gabrielb/teste_cosmics/cosmics_gen.root}
+
+# Setup DUNE environment
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
+setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
+
+outFile=${/exp/dune/app/users/gabrielb/teste_cosmics/cosmics_g4.root}
+
+campaign="justIN.w${JUSTIN_WORKFLOW_ID}s${JUSTIN_STAGE_ID}"
+
+# Here is where the LArSoft command is call it 
+(
+# Do the scary preload stuff in a subshell!
+export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
+echo "$LD_PRELOAD"
+
+lar -c $FCL_FILE $events_option -s -o $outFile  > $/exp/dune/app/users/gabrielb/teste_cosmics/cosmics_g4.log 2>&1
+)
+
+# Subshell exits with exit code of last command
+larExit=$?
+echo "lar exit code $larExit"
+
+if [ $larExit -eq 0 ] ; then
+  # Success !
+  echo "$pfn" > justin-processed-pfns.txt
+  jobscriptExit=0
+else
+  # Oh :(
+  jobscriptExit=1
+fi
+
+# Create compressed tar file with all log files 
+tar zcf `echo "$JUSTIN_JOBSUB_ID.logs.tgz" | sed 's/@/_/g'` *.log
+exit $jobscriptExit
