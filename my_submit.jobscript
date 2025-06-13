@@ -16,7 +16,7 @@ EOF
 FCL_FILE=${FCL_FILE:-standard_g4_protodunehd.fcl}
 DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
 DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
-INPUT_FILE="/exp/dune/app/users/gabrielb/teste_cosmics/cosmics_gen.root"
+INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
 outFile="cosmics_g4.root"
 
 # Setup DUNE environment
