@@ -1,6 +1,16 @@
 #!/bin/bash
 
 : <<'EOF'
+
+To submit to tarball
+
+1) tar cvz coisa.tar coisa_original
+2) setup justin
+3) justin time
+4) justin get-token
+5)  INPUT_TAR_DIR_LOCAL=`justin-cvmfs-upload coisa.tar`---> wait a little
+6) ls -l $INPUT_TAR_DIR_LOCAL
+
 To run this script with justin:
 
 USERF = $USER
@@ -9,8 +19,10 @@ FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
 justin simple-workflow \
   --monte-carlo 1 \
   --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
-  --env NUM_EVENTS=10,FCL_FILE=standard_g4_protodunehd.fcl \
-  --scope usertests --lifetime-days 2 \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE=standard_g4_protodunehd.fcl \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+  --scope gabrielb --lifetime-days 2 \
   --output-pattern 'cosmics_g4.root:$FNALURL/$USERF' 
 EOF
 
