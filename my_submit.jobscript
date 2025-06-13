@@ -3,13 +3,15 @@
 : <<'EOF'
 To run this script with justin:
 
+USERF = $USER
+FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
+
 justin simple-workflow \
+  --monte-carlo 1 \
   --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
   --env NUM_EVENTS=10,FCL_FILE=standard_g4_protodunehd.fcl \
   --scope usertests --lifetime-days 2 \
-  --output-pattern '*.root:output-test' 
-
-  
+  --output-pattern 'cosmics_g4.root:$FNALURL/$USERF' 
 EOF
 
 # Set defaults
@@ -34,7 +36,7 @@ fi
   echo "$LD_PRELOAD"
 
   lar -c "$FCL_FILE" $events_option -s "$INPUT_FILE" -o "$outFile" \
-    > /exp/dune/app/users/gabrielb/teste_cosmics/cosmics_g4.log 2>&1
+    > cosmics_g4.log 2>&1
 )
 
 larExit=$?
