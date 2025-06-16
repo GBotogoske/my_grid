@@ -1,5 +1,20 @@
+#!/bin/bash
 
-To test:
+: <<'EOF'
+
+To submit to tarball
+
+1) tar cvz coisa.tar coisa_original
+2) setup justin
+3) justin time
+4) justin get-token
+5)  INPUT_TAR_DIR_LOCAL=`justin-cvmfs-upload coisa.tar`---> wait a little
+6) ls -l $INPUT_TAR_DIR_LOCAL
+
+To run this script with justin:
+
+USERF = $USER
+FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
 
 justin simple-workflow \
   --monte-carlo 1 \
@@ -9,3 +24,43 @@ justin simple-workflow \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
   --scope usertests --lifetime-days 2 \
   --output-pattern "cosmics_g4.root:${FNALURL}/${USERF}" 
+EOF
+
+# Set defaults
+FCL_FILE=${FCL_FILE:-standard_g4_protodunehd.fcl}
+DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
+DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
+INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
+outFile="cosmics_g4.root"
+
+# Setup DUNE environment
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
+setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
+
+# Define number of events if set
+if [ -n "$NUM_EVENTS" ]; then
+  events_option="-n $NUM_EVENTS"
+fi
+
+# Run LArSoft
+(
+  export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
+  echo "$LD_PRELOAD"
+
+  lar -c "$FCL_FILE" $events_option -s "$INPUT_FILE" -o "$outFile" \
+    > cosmics_g4.log 2>&1
+)
+
+larExit=$?
+echo "lar exit code $larExit"
+
+if [ $larExit -eq 0 ]; then
+  echo "$outFile" > justin-processed-pfns.txt
+  jobscriptExit=0
+else
+  jobscriptExit=1
+fi
+
+tar zcf "$(echo "${JUSTIN_JOBSUB_ID}.logs.tgz" | sed 's/@/_/g')" *.log
+exit $jobscriptExit
+
