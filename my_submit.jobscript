@@ -61,7 +61,7 @@ fi
   #lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
   lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
   #lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option \
-  lar -c standard_g4_protodunehd.fcl -s data_gen.root -o data_g4.root -n 10 \
+  lar -c standard_g4_protodunehd.fcl -s data_gen.root -o data_g4.root -n 1 \
 
 )
 
