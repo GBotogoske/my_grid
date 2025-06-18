@@ -35,7 +35,7 @@ justin simple-workflow \
   --env FCL_FILE="standard_g4_protodunehd.fcl" \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
   --scope usertests --lifetime-days 2 \
-  --rss-mib 16000 \
+  --rss-mib 24000 \
   --output-pattern "cosmics_g4.root:${FNALURL}/${USERF}" 
   
 To test:
@@ -76,10 +76,9 @@ fi
   export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
   echo "$LD_PRELOAD"
 
-
-  lar -c $FCL_FILE -o data_gen.root -n 10
-
+  lar -c $FCL_FILE -o data_gen.root -n 10 \
   lar -c standard_g4_protodunehd.fcl -s data_gen.root -o cosmics_g4.root -n 10 \
+  
 )
 
 larExit=$?
