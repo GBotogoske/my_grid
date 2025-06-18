@@ -17,13 +17,13 @@ USERF=$USER
 FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
 
 justin simple-workflow \
-  --monte-carlo 1 \
+  --monte-carlo 1 --gpu \
   --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
   --env NUM_EVENTS=10 \
   --env FCL_FILE="standard_g4_protodunehd.fcl" \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
   --scope usertests --lifetime-days 2 \
-  --rss-mib 7000 \
+  --rss-mib 16000 \
   --output-pattern "cosmics_g4.root:${FNALURL}/${USERF}" 
   
 To test:
