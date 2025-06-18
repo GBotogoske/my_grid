@@ -70,14 +70,16 @@ if [ -n "$NUM_EVENTS" ]; then
 fi
 
 # Run LArSoft
+#lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
+#lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option \
 (
   export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
   echo "$LD_PRELOAD"
 
-  #lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
-  lar -c $FCL_FILE -o data_gen.root -n 100
-  #lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option \
-  lar -c standard_g4_protodunehd.fcl -s data_gen.root -o cosmics_g4.root -n 100 \
+
+  lar -c $FCL_FILE -o data_gen.root -n 10
+
+  lar -c standard_g4_protodunehd.fcl -s data_gen.root -o cosmics_g4.root -n 10 \
 )
 
 larExit=$?
