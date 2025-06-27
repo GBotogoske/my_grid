@@ -24,7 +24,7 @@ justin simple-workflow \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
   --scope usertests --lifetime-days 2 \
   --rss-mib 24000 \
-  --output-pattern "cosmics_g4_*.root:${FNALURL}/${USERF}" 
+  --output-pattern "cosmics_detsim_*.root:${FNALURL}/${USERF}" 
 
 or with gpu
 
@@ -63,8 +63,10 @@ DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
 DID_PFN_RSE=`$JUSTIN_PATH/justin-get-file`
 pfn=`echo $DID_PFN_RSE | cut -f2 -d' '`
 
+first_file="cosmics_gen_${pfn}.root"
+second_file="cosmics_g4_${pfn}.root"
+third_file="cosmics_detsim_${pfn}.root"
 
-outFile="cosmics_g4_${pfn}.root"
 
 # Setup DUNE environment
 source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
@@ -82,15 +84,16 @@ fi
 export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
 echo "$LD_PRELOAD"
 
-lar -c $FCL_FILE_GEN -o data_gen.root
-lar -c $FCL_FILE -s data_gen.root -o "$outFile"
+lar -c $FCL_FILE_GEN -o "$first_file"
+lar -c $FCL_FILE -s "$first_file" -o "$second_file"
+lar -c standard_detsim_protodunehd.fcl -s "$second_file" -o "$third_file"
   
 )
 
 larExit=$?
 echo "lar exit code $larExit"
 echo "pfn $pfn"
-echo "outfile $outFile"
+echo "outfile $third_file"
 
 if [ $larExit -eq 0 ]; then
   echo "$pfn" > justin-processed-pfns.txt
