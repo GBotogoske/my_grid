@@ -1,75 +1,97 @@
-#include "services_refactored_pdune.fcl"
-#include "LArG4_dune.fcl"
-#include "IonAndScint_dune.fcl"
-#include "PDFastSim_dune.fcl"
+#!/bin/bash
 
-process_name: G4
+: <<'EOF'
 
-services:
-{
-  TFileService: { fileName: "g4_protodunehd_hist.root" }
-  TimeTracker:       {}
-  MemoryTracker:     {} # default is one
-  RandomNumberGenerator: {} #ART native random number generator
-  message:      @local::standard_info
+To submit to tarball
 
-  @table::protodunehd_refactored_simulation_services
+1) tar cvz coisa.tar coisa_original
+2) setup justin
+3) justin time
+4) justin get-token
+5) INPUT_TAR_DIR_LOCAL=`justin-cvmfs-upload coisa.tar`---> wait a little
+6) ls -l $INPUT_TAR_DIR_LOCAL
 
-  NuRandomService:       @local::dune_prod_seedservice
-}
+To run this script with justin:
+
+USERF=$USER
+FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
+
+justin simple-workflow \
+  --monte-carlo 20 \
+  --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE="standard_g4_protodunehd.fcl" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+  --scope usertests --lifetime-days 2 \
+  --rss-mib 16000 \
+  --output-pattern "cosmics_g4*.root:${FNALURL}/${USERF}" 
+
+or with gpu
+
+justin simple-workflow \
+  --monte-carlo 1 --gpu \
+  --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE="standard_g4_protodunehd.fcl" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+  --scope usertests --lifetime-days 2 \
+  --rss-mib 24000 \
+  --output-pattern "cosmics_g4.root:${FNALURL}/${USERF}" 
+  
+To test:
+
+justin-test-jobscript \
+  --monte-carlo 1 \
+  --jobscript jobscript_local.jobscript  \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE="standard_g4_protodunehd.fcl" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+
+To stop:
+justin finish-workflow --workflow-id <ID_DO_WORKFLOW>
 
 
+EOF
 
-source:
-{
-  module_type: RootInput
-  maxEvents:  30000
-  fileNames: ["gen_protodunehd.root"]
-}
+# Set defaults
+FCL_FILE=$INPUT_TAR_DIR_LOCAL/gen_cosmics.fcl
+FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
+DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
+DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
+#INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
+outFile="cosmics_g4_${JUSTIN_JOB_ID}.root"
 
-physics:
-{
+# Setup DUNE environment
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sha
+setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
 
-  producers:
-  {
+# Define number of events if set
+if [ -n "$NUM_EVENTS" ]; then
+  events_option="-n $NUM_EVENTS"
+fi
 
-    #retain largeant name for compatibility
-    largeant:     @local::protodune_larg4
-    IonAndScint:  @local::protodunehd_ionandscint
-    IonAndScintExternal: @local::protodunehd_ionandscint_external
-    PDFastSim:    @local::protodune_hd_pdfastsim_par
-    PDFastSimExternal: @local::protodune_hd_pdfastsim_pvs_external
-    rns: {module_type: "RandomNumberSaver"}
-  }
+# Run LArSoft
+#lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
+#lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option 
+(
+export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
+echo "$LD_PRELOAD"
 
-  analyzers:
-  {
+lar -c $FCL_FILE -o data_gen.root -n 10
+lar -c $FCL_FILE2 -s data_gen.root -o "$outFile"
+  
+)
 
-  }
+larExit=$?
+echo "lar exit code $larExit"
 
-  simulate:      [  rns, largeant, IonAndScint, IonAndScintExternal, PDFastSim, PDFastSimExternal ]
+if [ $larExit -eq 0 ]; then
+  echo "$outFile" > justin-processed-pfns.txt
+  jobscriptExit=0
+else
+  jobscriptExit=1
+fi
 
-  stream1:       [ out1 ]
+#tar -zcf "$(echo "${JUSTIN_JOBSUB_ID}.logs.tgz" | sed 's/@/_/g')" *.log
+exit $jobscriptExit
 
-  trigger_paths: [  simulate ] 
-  end_paths:     [  stream1  ]  
-}
-
-outputs:
-{
-  out1:
-  {
-    module_type: RootOutput
-    fileName:    "%ifb_g4.root"
-    dataTier:    "simulated"
-    #outputCommands: [ "keep *" ]
-    #outputCommands: [ "keep *","drop simb::MCTruths_*", "drop sim::SimEnergyDeposits_largeant_*_G4*"]
-    outputCommands: ["drop *","keep sim::SimPhotons_*_*_*","keep sim::SimPhotonsLite_*_*_*","keep sim::OpDetBacktrackerRecords_*_*_*","keep *_largeant_*_*","keep *_IonAndScint_*_*","keep *_PDFastSim*_*_*","keep *_rns_*_*"]
-
-    #fastCloning: false #will fail if the split level is not the same as for the gen stage, so turn it off
-    compressionLevel: 1 #zlib argument (0-9) 
-    #basketSize: 8192 #[Byte] buffer size at 8k
-    #splitLevel: 0 #reduces number of buffers
-    #treeMaxVirtualSize: 1 #[Byte] limits number of buffers/branch to 1 (default is 10)
-  }
-}
