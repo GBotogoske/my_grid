@@ -62,7 +62,7 @@ DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
 outFile="cosmics_g4_${JUSTIN_JOB_ID}.root"
 
 # Setup DUNE environment
-source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sha
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
 setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
 
 # Define number of events if set
