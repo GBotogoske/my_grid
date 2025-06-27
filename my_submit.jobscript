@@ -24,7 +24,7 @@ justin simple-workflow \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
   --scope usertests --lifetime-days 2 \
   --rss-mib 24000 \
-  --output-pattern "cosmics_g4*.root:${FNALURL}/${USERF}" 
+  --output-pattern "cosmics_g4_*.root:${FNALURL}/${USERF}" 
 
 or with gpu
 
@@ -59,7 +59,12 @@ FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
 DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
 DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
 #INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
-outFile="cosmics_g4_${JUSTIN_STAGE_ID}.root"
+
+DID_PFN_RSE=`$JUSTIN_PATH/justin-get-file`
+pfn=`echo $DID_PFN_RSE | cut -f2 -d' '`
+
+
+outFile="cosmics_g4_${pfn}.root"
 
 # Setup DUNE environment
 source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
@@ -82,15 +87,13 @@ lar -c $FCL_FILE2 -s data_gen.root -o "$outFile"
   
 )
 
-pfn="$outFile"
-FILE=$outFile
-
 larExit=$?
 echo "lar exit code $larExit"
-echo "outfile $pfn"
+echo "pfn $pfn"
+echo "outfile $outFile"
 
 if [ $larExit -eq 0 ]; then
-  echo "$FILE" > justin-processed-pfns.txt
+  echo "$pfn" > justin-processed-pfns.txt
   jobscriptExit=0
 else
   jobscriptExit=1
