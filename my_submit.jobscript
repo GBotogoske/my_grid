@@ -83,13 +83,14 @@ lar -c $FCL_FILE2 -s data_gen.root -o "$outFile"
 )
 
 pfn="$outFile"
+FILE=$outFile
 
 larExit=$?
 echo "lar exit code $larExit"
 echo "outfile $pfn"
 
 if [ $larExit -eq 0 ]; then
-  echo "" > justin-processed-pfns.txt
+  echo "$FILE" > justin-processed-pfns.txt
   jobscriptExit=0
 else
   jobscriptExit=1
