@@ -54,7 +54,7 @@ justin finish-workflow --workflow-id <ID_DO_WORKFLOW>
 EOF
 
 # Set defaults
-FCL_FILE=$INPUT_TAR_DIR_LOCAL/gen_cosmics.fcl
+FCL_FILE_GEN=$INPUT_TAR_DIR_LOCAL/gen_cosmics.fcl
 FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
 DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
 DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
@@ -82,8 +82,8 @@ fi
 export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
 echo "$LD_PRELOAD"
 
-lar -c $FCL_FILE -o data_gen.root
-lar -c $FCL_FILE2 -s data_gen.root -o "$outFile"
+lar -c $FCL_FILE_GEN -o data_gen.root
+lar -c $FCL_FILE -s data_gen.root -o "$outFile"
   
 )
 
