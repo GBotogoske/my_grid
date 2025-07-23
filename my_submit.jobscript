@@ -4,7 +4,7 @@
 
 To submit to tarball
 
-1) tar cvz coisa.tar coisa_original
+1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_cosmics.fcl gen_cosmics_g4.fcl
 2) setup justin
 3) justin time
 4) justin get-token
