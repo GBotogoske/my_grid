@@ -50,6 +50,8 @@ justin-test-jobscript \
 To stop:
 justin finish-workflow --workflow-id <ID_DO_WORKFLOW>
 
+To see the output files:
+/pnfs/dune/scratch/users/<USER>
 
 EOF
 
