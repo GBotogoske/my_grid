@@ -84,9 +84,9 @@ fi
 export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
 echo "$LD_PRELOAD"
 
-lar -c $FCL_FILE_GEN -o "$first_file"
-lar -c $FCL_FILE -s "$first_file" -o "$second_file"
-lar -c standard_detsim_protodunehd.fcl -s "$second_file" -o "$third_file"
+lar -c $FCL_FILE_GEN -o "$first_file" $events_option
+lar -c $FCL_FILE2 -s "$first_file" -o "$second_file" $events_option
+lar -c standard_detsim_protodunehd.fcl -s "$second_file" -o "$third_file" $events_option
   
 )
 
