@@ -4,7 +4,7 @@
 
 To submit to tarball
 
-1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_cosmics.fcl gen_cosmics_g4.fcl
+1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_cosmics.fcl gen_cosmics_g4.fcl gen_cosmics_detsim.fcl
 2) setup justin
 3) justin time
 4) justin get-token
@@ -58,6 +58,7 @@ EOF
 # Set defaults
 FCL_FILE_GEN=$INPUT_TAR_DIR_LOCAL/gen_cosmics.fcl
 FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
+FCL_FILE3=$INPUT_TAR_DIR_LOCAL/gen_cosmics_detsim.fcl
 DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
 DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
 #INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
@@ -88,7 +89,7 @@ echo "$LD_PRELOAD"
 
 lar -c $FCL_FILE_GEN -o "$first_file"
 lar -c $FCL_FILE -s "$first_file" -o "$second_file"
-lar -c standard_detsim_protodunehd.fcl -s "$second_file" -o "$third_file"
+lar -c $FCL_FILE3 -s "$second_file" -o "$third_file"
   
 )
 
