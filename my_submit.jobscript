@@ -88,7 +88,7 @@ export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
 echo "$LD_PRELOAD"
 
 lar -c $FCL_FILE_GEN -o "$first_file"
-lar -c $FCL_FILE -s "$first_file" -o "$second_file"
+lar -c $FCL_FILE2 -s "$first_file" -o "$second_file"
 lar -c $FCL_FILE3 -s "$second_file" -o "$third_file"
   
 )
