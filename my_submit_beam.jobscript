@@ -1,0 +1,110 @@
+#!/bin/bash
+
+: <<'EOF'
+
+To submit to tarball
+
+1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_beam.fcl gen_cosmics_g4.fcl gen_cosmics_detsim.fcl
+2) setup justin
+3) justin time
+4) justin get-token
+5) INPUT_TAR_DIR_LOCAL=`justin-cvmfs-upload coisa.tar`---> wait a little
+6) ls -l $INPUT_TAR_DIR_LOCAL
+
+To run this script with justin:
+
+USERF=$USER
+FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
+
+justin simple-workflow \
+  --monte-carlo 100 \
+  --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE="standard_g4_protodunehd.fcl" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+  --scope usertests --lifetime-days 2 \
+  --rss-mib 24000 \
+  --output-pattern "beam_detsim_*.root:${FNALURL}/${USERF}" 
+
+or with gpu
+
+justin simple-workflow \
+  --monte-carlo 1 --gpu \
+  --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE="standard_g4_protodunehd.fcl" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+  --scope usertests --lifetime-days 2 \
+  --rss-mib 24000 \
+  --output-pattern "cosmics_g4.root:${FNALURL}/${USERF}" 
+  
+To test:
+
+justin-test-jobscript \
+  --monte-carlo 1 \
+  --jobscript jobscript_local.jobscript  \
+  --env NUM_EVENTS=10 \
+  --env FCL_FILE="standard_g4_protodunehd.fcl" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+
+To stop:
+justin finish-workflow --workflow-id <ID_DO_WORKFLOW>
+
+To see the output files:
+/pnfs/dune/scratch/users/<USER>
+
+EOF
+
+# Set defaults
+FCL_FILE_GEN=$INPUT_TAR_DIR_LOCAL/gen_beam.fcl
+FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
+FCL_FILE3=$INPUT_TAR_DIR_LOCAL/gen_cosmics_detsim.fcl
+DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
+DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
+#INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
+
+DID_PFN_RSE=`$JUSTIN_PATH/justin-get-file`
+pfn=`echo $DID_PFN_RSE | cut -f2 -d' '`
+
+first_file="beam_gen_${pfn}.root"
+second_file="beam_g4_${pfn}.root"
+third_file="beam_detsim_${pfn}.root"
+
+
+# Setup DUNE environment
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
+setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
+
+# Define number of events if set
+if [ -n "$NUM_EVENTS" ]; then
+  events_option="-n $NUM_EVENTS"
+fi
+
+# Run LArSoft
+#lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
+#lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option 
+(
+export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
+echo "$LD_PRELOAD"
+
+lar -c $FCL_FILE_GEN -o "$first_file"
+lar -c $FCL_FILE2 -s "$first_file" -o "$second_file"
+lar -c $FCL_FILE3 -s "$second_file" -o "$third_file"
+  
+)
+
+larExit=$?
+echo "lar exit code $larExit"
+echo "pfn $pfn"
+echo "outfile $third_file"
+
+if [ $larExit -eq 0 ]; then
+  echo "$pfn" > justin-processed-pfns.txt
+  jobscriptExit=0
+else
+  jobscriptExit=1
+fi
+
+#tar -zcf "$(echo "${JUSTIN_JOBSUB_ID}.logs.tgz" | sed 's/@/_/g')" *.log
+exit $jobscriptExit
+
