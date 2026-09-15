@@ -42,7 +42,7 @@ To test:
 
 justin-test-jobscript \
   --monte-carlo 1 \
-  --jobscript jobscript_local.jobscript  \
+  --jobscript my_beam.jobscript  \
   --env NUM_EVENTS=10 \
   --env FCL_FILE="standard_g4_protodunehd.fcl" \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
@@ -122,22 +122,24 @@ echo "LD_PRELOAD = $LD_PRELOAD"
 GEN_FCL_JOB="gen_beam_${pfn}.fcl"
 
 sed -E \
-  -e "s|^[[:space:]]*physics\.producers\.generator\.StartEvent:[[:space:]]*[0-9]+|physics.producers.generator.StartEvent: $START_EVENT|" \
   -e "s|^[[:space:]]*maxEvents:[[:space:]]*[0-9]+|  maxEvents: $NUM_EVENTS|" \
-  -e "s|^[[:space:]]*source\.maxEvents:[[:space:]]*[0-9]+|source.maxEvents: $NUM_EVENTS|" \
+  -e "s|^[[:space:]]*skipEvents:[[:space:]]*[0-9]+|  skipEvents: $START_EVENT|" \
   "$FCL_FILE_GEN" > "$GEN_FCL_JOB"
 
-
 echo "Generator configuration:"
-grep -E "StartEvent|maxEvents" "$GEN_FCL_JOB"
+grep -E "maxEvents|skipEvents|NominalP" "$GEN_FCL_JOB"
 
 
 echo "========================================"
 echo "1 - BEAM GENERATION"
 echo "========================================"
 
-lar -c "$GEN_FCL_JOB" -o "$first_file" -n "$NUM_EVENTS"
+BEAM_INPUT="/pnfs/dune/persistent/dunepro/beam_data/simulation/mcc10/H4_v34b_80000_5GeV_-27.7_10M.root"
 
+lar -c "$GEN_FCL_JOB" \
+    -s "$BEAM_INPUT" \
+    -o "$first_file" \
+    -n "$NUM_EVENTS"
 echo "========================================"
 echo "2 - G4"
 echo "========================================"
