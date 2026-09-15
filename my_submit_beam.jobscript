@@ -134,7 +134,7 @@ echo "========================================"
 echo "1 - BEAM GENERATION"
 echo "========================================"
 
-BEAM_INPUT="/pnfs/dune/persistent/dunepro/beam_data/simulation/mcc10/H4_v34b_80000_5GeV_-27.7_10M.root"
+BEAM_INPUT="root://fndca1.fnal.gov:1094/pnfs/fnal.gov/usr/dune/persistent/dunepro/beam_data/simulation/mcc10/H4_v34b_80000_5GeV_-27.7_10M.root"
 
 lar -c "$GEN_FCL_JOB" \
     -s "$BEAM_INPUT" \
