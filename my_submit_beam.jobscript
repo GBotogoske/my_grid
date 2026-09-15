@@ -4,7 +4,7 @@
 
 To submit to tarball
 
-1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_beam.fcl gen_cosmics_g4.fcl gen_cosmics_detsim.fcl charge.fcl flash.fcl
+1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_beam.fcl gen_cosmics_g4.fcl gen_cosmics_detsim.fcl
 2) setup justin
 3) justin time
 4) justin get-token
@@ -24,7 +24,7 @@ justin simple-workflow \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
   --scope usertests --lifetime-days 2 \
   --rss-mib 24000 \
-  --output-pattern "beam_detsim_pandora_flash_*.root:${FNALURL}/${USERF}" 
+  --output-pattern "beam_detsim_*.root:${FNALURL}/${USERF}" 
 
 or with gpu
 
@@ -59,21 +59,43 @@ EOF
 FCL_FILE_GEN=$INPUT_TAR_DIR_LOCAL/gen_beam.fcl
 FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
 FCL_FILE3=$INPUT_TAR_DIR_LOCAL/gen_cosmics_detsim.fcl
-FCL_FILE4=$INPUT_TAR_DIR_LOCAL/charge.fcl
-FCL_FILE5=$INPUT_TAR_DIR_LOCAL/flash.fcl
+
 DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
 DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
 #INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
 
 DID_PFN_RSE=`$JUSTIN_PATH/justin-get-file`
-pfn=`echo $DID_PFN_RSE | cut -f2 -d' '`
+
+if [ -z "$DID_PFN_RSE" ]; then
+    echo "No Monte Carlo counter available"
+    exit 0
+fi
+
+did=`echo "$DID_PFN_RSE" | cut -f1 -d' '`
+pfn=`echo "$DID_PFN_RSE" | cut -f2 -d' '`
+
+# For --monte-carlo, pfn is something like:
+# 000001, 000002, 000003, ...
+
+MC_INDEX=$((10#$pfn))
+
+NUM_EVENTS=${NUM_EVENTS:-10}
+
+# job 1 -> StartEvent 0
+# job 2 -> StartEvent 10
+# job 3 -> StartEvent 20
+# ...
+START_EVENT=$(( (MC_INDEX - 1) * NUM_EVENTS ))
+
+echo "========================================="
+echo "MC_INDEX    = $MC_INDEX"
+echo "NUM_EVENTS  = $NUM_EVENTS"
+echo "START_EVENT = $START_EVENT"
+echo "========================================="
 
 first_file="beam_gen_${pfn}.root"
 second_file="beam_g4_${pfn}.root"
 third_file="beam_detsim_${pfn}.root"
-charge_file="beam_detsim_pandora_${pfn}.root"
-flash_file="beam_detsim_pandora_flash_${pfn}.root"
-
 
 # Setup DUNE environment
 source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
@@ -88,21 +110,52 @@ fi
 #lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
 #lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option 
 (
-export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
-echo "$LD_PRELOAD"
+set -e
 
-lar -c $FCL_FILE_GEN -o "$first_file"
-lar -c $FCL_FILE2 -s "$first_file" -o "$second_file"
-lar -c $FCL_FILE3 -s "$second_file" -o "$third_file"
-lar -c $FCL_FILE4 -s "$third_file" -o "$charge_file"
-lar -c $FCL_FILE5 -s "$charge_file" -o "$flash_file"
+export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
+echo "LD_PRELOAD = $LD_PRELOAD"
+
+# ============================================================
+# Create generator FCL specific to this job
+# ============================================================
+
+GEN_FCL_JOB="gen_beam_${pfn}.fcl"
+
+sed -E \
+  -e "s|^[[:space:]]*physics\.producers\.generator\.StartEvent:[[:space:]]*[0-9]+|physics.producers.generator.StartEvent: $START_EVENT|" \
+  -e "s|^[[:space:]]*maxEvents:[[:space:]]*[0-9]+|  maxEvents: $NUM_EVENTS|" \
+  -e "s|^[[:space:]]*source\.maxEvents:[[:space:]]*[0-9]+|source.maxEvents: $NUM_EVENTS|" \
+  "$FCL_FILE_GEN" > "$GEN_FCL_JOB"
+
+
+echo "Generator configuration:"
+grep -E "StartEvent|maxEvents" "$GEN_FCL_JOB"
+
+
+echo "========================================"
+echo "1 - BEAM GENERATION"
+echo "========================================"
+
+lar -c "$GEN_FCL_JOB" -o "$first_file" -n "$NUM_EVENTS"
+
+echo "========================================"
+echo "2 - G4"
+echo "========================================"
+
+lar -c "$FCL_FILE2" -s "$first_file" -o "$second_file"
+
+echo "========================================"
+echo "3 - DETSIM"
+echo "========================================"
+
+lar -c "$FCL_FILE3" -s "$second_file" -o "$third_file"
 
 )
 
 larExit=$?
 echo "lar exit code $larExit"
 echo "pfn $pfn"
-echo "outfile $flash_file"
+echo "outfile $third_file"
 
 if [ $larExit -eq 0 ]; then
   echo "$pfn" > justin-processed-pfns.txt
