@@ -2,170 +2,300 @@
 
 : <<'EOF'
 
-To submit to tarball
+============================================================
+CREATE TARBALL
+============================================================
 
-1) tar cvz coisa.tar coisa_original ou tar -cvf my_fcl.tar gen_beam.fcl gen_cosmics_g4.fcl gen_cosmics_detsim.fcl
-2) setup justin
-3) justin time
-4) justin get-token
-5) INPUT_TAR_DIR_LOCAL=`justin-cvmfs-upload coisa.tar`---> wait a little
-6) ls -l $INPUT_TAR_DIR_LOCAL
+tar -cvf my_fcl.tar \
+    gen_beam.fcl \
+    gen_cosmics_g4.fcl \
+    gen_cosmics_detsim.fcl
 
-To run this script with justin:
+setup justin
+justin time
+justin get-token
+
+INPUT_TAR_DIR_LOCAL=`justin-cvmfs-upload my_fcl.tar`
+
+# Wait a little and check:
+ls -l "$INPUT_TAR_DIR_LOCAL"
+
+
+============================================================
+SUBMIT
+============================================================
 
 USERF=$USER
 FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
 
+MQL_QUERY="files from ehn1-beam-np04:ehn1-beam-np04__np04beam_2025__root-tuple__v3.06__g4beamline__5GeV_v1_official limit 100"
+
 justin simple-workflow \
-  --monte-carlo 100 \
+  --mql "$MQL_QUERY" \
   --jobscript-git GBotogoske/my_grid/my_submit_beam.jobscript:main \
   --env NUM_EVENTS=10 \
-  --env FCL_FILE="standard_g4_protodunehd.fcl" \
   --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
-  --scope usertests --lifetime-days 2 \
+  --max-distance 30 \
+  --scope usertests \
+  --lifetime-days 2 \
   --rss-mib 24000 \
-  --output-pattern "beam_detsim_*.root:${FNALURL}/${USERF}" 
+  --output-pattern "beam_detsim_*.root:${FNALURL}/${USERF}"
 
-or with gpu
 
-justin simple-workflow \
-  --monte-carlo 1 --gpu \
-  --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
-  --env NUM_EVENTS=10 \
-  --env FCL_FILE="standard_g4_protodunehd.fcl" \
-  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
-  --scope usertests --lifetime-days 2 \
-  --rss-mib 24000 \
-  --output-pattern "cosmics_g4.root:${FNALURL}/${USERF}" 
-  
-To test:
+============================================================
+TEST WITH ONE INPUT FILE
+============================================================
+
+MQL_TEST="files from ehn1-beam-np04:ehn1-beam-np04__np04beam_2025__root-tuple__v3.06__g4beamline__5GeV_v1_official limit 1"
 
 justin-test-jobscript \
-  --monte-carlo 1 \
-  --jobscript my_beam.jobscript  \
+  --mql "$MQL_TEST" \
+  --jobscript my_beam.jobscript \
   --env NUM_EVENTS=10 \
-  --env FCL_FILE="standard_g4_protodunehd.fcl" \
-  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL" \
+  --env INPUT_TAR_DIR_LOCAL="$INPUT_TAR_DIR_LOCAL"
 
-To stop:
+
+============================================================
+STOP WORKFLOW
+============================================================
+
 justin finish-workflow --workflow-id <ID_DO_WORKFLOW>
 
-To see the output files:
+
+============================================================
+OUTPUT FILES
+============================================================
+
 /pnfs/dune/scratch/users/<USER>
 
 EOF
 
-# Set defaults
-FCL_FILE_GEN=$INPUT_TAR_DIR_LOCAL/gen_beam.fcl
-FCL_FILE2=$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl
-FCL_FILE3=$INPUT_TAR_DIR_LOCAL/gen_cosmics_detsim.fcl
+
+# ============================================================
+# FCL FILES
+# ============================================================
+
+FCL_FILE_GEN="$INPUT_TAR_DIR_LOCAL/gen_beam.fcl"
+FCL_FILE_G4="$INPUT_TAR_DIR_LOCAL/gen_cosmics_g4.fcl"
+FCL_FILE_DETSIM="$INPUT_TAR_DIR_LOCAL/gen_cosmics_detsim.fcl"
+
+
+# ============================================================
+# SOFTWARE VERSION
+# ============================================================
 
 DUNE_VERSION=${DUNE_VERSION:-v10_08_00d00}
 DUNE_QUALIFIER=${DUNE_QUALIFIER:-e26:prof}
-#INPUT_FILE=${INPUT_FILE:-$INPUT_TAR_DIR_LOCAL/cosmics_gen.root}
+
+
+# ============================================================
+# SETUP DUNE
+# ============================================================
+
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
+
+setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
+
+setup_exit=$?
+
+if [ "$setup_exit" != 0 ]; then
+    echo "ERROR setting up dunesw $DUNE_VERSION"
+    exit "$setup_exit"
+fi
+
+echo "========================================="
+echo "DUNE_VERSION   = $DUNE_VERSION"
+echo "DUNE_QUALIFIER = $DUNE_QUALIFIER"
+echo "========================================="
+
+
+# ============================================================
+# GET ONE H4 INPUT FILE FROM JUSTIN
+# ============================================================
 
 DID_PFN_RSE=`$JUSTIN_PATH/justin-get-file`
 
 if [ -z "$DID_PFN_RSE" ]; then
-    echo "No Monte Carlo counter available"
+    echo "Could not get input H4 file"
     exit 0
 fi
 
+
 did=`echo "$DID_PFN_RSE" | cut -f1 -d' '`
 pfn=`echo "$DID_PFN_RSE" | cut -f2 -d' '`
+rse=`echo "$DID_PFN_RSE" | cut -f3 -d' '`
 
-# For --monte-carlo, pfn is something like:
-# 000001, 000002, 000003, ...
+name_only=`echo "$did" | cut -f2 -d':'`
 
-MC_INDEX=$((10#$pfn))
+
+echo "========================================="
+echo "H4 INPUT FILE"
+echo "========================================="
+echo "DID       = $did"
+echo "PFN       = $pfn"
+echo "RSE       = $rse"
+echo "NAME      = $name_only"
+echo "========================================="
+
+
+# ============================================================
+# NUMBER OF EVENTS
+# ============================================================
 
 NUM_EVENTS=${NUM_EVENTS:-10}
 
-# job 1 -> StartEvent 0
-# job 2 -> StartEvent 10
-# job 3 -> StartEvent 20
-# ...
-START_EVENT=$(( (MC_INDEX - 1) * NUM_EVENTS ))
+echo "NUM_EVENTS = $NUM_EVENTS"
+
+
+# ============================================================
+# UNIQUE JOB IDENTIFIER
+# ============================================================
+
+jobid=`echo "${JUSTIN_JOBSUB_ID:-1}" | cut -f1 -d'@' | sed -e "s/\./_/"`
+stageid=${JUSTIN_STAGE_ID:-1}
 
 echo "========================================="
-echo "MC_INDEX    = $MC_INDEX"
-echo "NUM_EVENTS  = $NUM_EVENTS"
-echo "START_EVENT = $START_EVENT"
+echo "JUSTIN JOB"
+echo "========================================="
+echo "JOB ID   = $jobid"
+echo "STAGE ID = $stageid"
 echo "========================================="
 
-first_file="beam_gen_${pfn}.root"
-second_file="beam_g4_${pfn}.root"
-third_file="beam_detsim_${pfn}.root"
 
-# Setup DUNE environment
-source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
-setup dunesw "$DUNE_VERSION" -q "$DUNE_QUALIFIER"
+# ============================================================
+# OUTPUT FILE NAMES
+# ============================================================
 
-# Define number of events if set
-if [ -n "$NUM_EVENTS" ]; then
-  events_option="-n $NUM_EVENTS"
+first_file="beam_gen_${jobid}.root"
+second_file="beam_g4_${jobid}.root"
+third_file="beam_detsim_${jobid}.root"
+
+
+echo "GEN output    = $first_file"
+echo "G4 output     = $second_file"
+echo "DETSIM output = $third_file"
+
+
+# ============================================================
+# XROOTD
+# ============================================================
+
+if [ -n "${XROOTD_LIB:-}" ] && \
+   [ -f "${XROOTD_LIB}/libXrdPosixPreload.so" ]; then
+
+    export LD_PRELOAD="${XROOTD_LIB}/libXrdPosixPreload.so"
+
+    echo "LD_PRELOAD = $LD_PRELOAD"
+else
+    echo "XRootD preload library not found; continuing without LD_PRELOAD"
 fi
 
-# Run LArSoft
-#lar -c prod_cosmics_protodunehd.fcl -o data_gen.root -n 10
-#lar -c "$FCL_FILE" -s "$INPUT_FILE" -o data_g4.root $events_option 
-(
-set -e
-
-export LD_PRELOAD=${XROOTD_LIB}/libXrdPosixPreload.so
-echo "LD_PRELOAD = $LD_PRELOAD"
 
 # ============================================================
-# Create generator FCL specific to this job
+# 1 - BEAM GENERATION
 # ============================================================
 
-GEN_FCL_JOB="gen_beam_${pfn}.fcl"
-
-sed -E \
-  -e "s|^[[:space:]]*maxEvents:[[:space:]]*[0-9]+|  maxEvents: $NUM_EVENTS|" \
-  -e "s|^[[:space:]]*skipEvents:[[:space:]]*[0-9]+|  skipEvents: $START_EVENT|" \
-  "$FCL_FILE_GEN" > "$GEN_FCL_JOB"
-
-echo "Generator configuration:"
-grep -E "maxEvents|skipEvents|NominalP" "$GEN_FCL_JOB"
-
-
+echo ""
 echo "========================================"
 echo "1 - BEAM GENERATION"
 echo "========================================"
+echo "H4 input = $pfn"
+echo "Events   = $NUM_EVENTS"
+echo "========================================"
 
-BEAM_INPUT="root://fndca1.fnal.gov:1094/pnfs/fnal.gov/usr/dune/persistent/dunepro/beam_data/simulation/mcc10/H4_v34b_80000_5GeV_-27.7_10M.root"
-
-lar -c "$GEN_FCL_JOB" \
-    -s "$BEAM_INPUT" \
+lar \
+    -n "$NUM_EVENTS" \
+    -c "$FCL_FILE_GEN" \
     -o "$first_file" \
-    -n "$NUM_EVENTS"
+    "$pfn"
+
+larReturnCode=$?
+
+echo "GEN lar return code = $larReturnCode"
+
+if [ "$larReturnCode" != 0 ]; then
+    echo "ERROR during beam generation"
+    exit "$larReturnCode"
+fi
+
+
+# ============================================================
+# 2 - G4
+# ============================================================
+
+echo ""
 echo "========================================"
 echo "2 - G4"
 echo "========================================"
+echo "Input  = $first_file"
+echo "Output = $second_file"
+echo "========================================"
 
-lar -c "$FCL_FILE2" -s "$first_file" -o "$second_file"
+lar \
+    -c "$FCL_FILE_G4" \
+    -o "$second_file" \
+    "$first_file"
 
+larReturnCode=$?
+
+echo "G4 lar return code = $larReturnCode"
+
+if [ "$larReturnCode" != 0 ]; then
+    echo "ERROR during G4"
+    exit "$larReturnCode"
+fi
+
+
+# ============================================================
+# 3 - DETSIM
+# ============================================================
+
+echo ""
 echo "========================================"
 echo "3 - DETSIM"
 echo "========================================"
+echo "Input  = $second_file"
+echo "Output = $third_file"
+echo "========================================"
 
-lar -c "$FCL_FILE3" -s "$second_file" -o "$third_file"
+lar \
+    -c "$FCL_FILE_DETSIM" \
+    -o "$third_file" \
+    "$second_file"
 
-)
+larReturnCode=$?
 
-larExit=$?
-echo "lar exit code $larExit"
-echo "pfn $pfn"
-echo "outfile $third_file"
+echo "DETSIM lar return code = $larReturnCode"
 
-if [ $larExit -eq 0 ]; then
-  echo "$pfn" > justin-processed-pfns.txt
-  jobscriptExit=0
-else
-  jobscriptExit=1
+if [ "$larReturnCode" != 0 ]; then
+    echo "ERROR during DETSIM"
+    exit "$larReturnCode"
 fi
 
-#tar -zcf "$(echo "${JUSTIN_JOBSUB_ID}.logs.tgz" | sed 's/@/_/g')" *.log
-exit $jobscriptExit
 
+# ============================================================
+# TELL JUSTIN THAT INPUT WAS PROCESSED
+# ============================================================
+
+echo "$pfn" > justin-processed-pfns.txt
+
+
+# ============================================================
+# FINAL INFORMATION
+# ============================================================
+
+echo ""
+echo "========================================"
+echo "JOB FINISHED SUCCESSFULLY"
+echo "========================================"
+echo "Input DID     = $did"
+echo "Input H4      = $pfn"
+echo "Input RSE     = $rse"
+echo "GEN output    = $first_file"
+echo "G4 output     = $second_file"
+echo "DETSIM output = $third_file"
+echo "========================================"
+
+ls -lh
+
+exit 0
