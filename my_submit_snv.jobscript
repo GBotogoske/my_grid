@@ -1,0 +1,133 @@
+#!/bin/bash
+
+: <<'INSTRUCTIONS'
+DUNE FD2-VD SUPERNOVA: MARLEY GEN -> Geant4 -> DetSim
+===================================================
+
+To submit using justIN:
+
+1) setup justin
+2) justin time
+3) justin get-token
+
+4) Update/push this jobscript to the Git repository referenced below.
+
+5) Submit (100 Monte Carlo units x 100 events = 10,000 events if all succeed):
+
+   USERF=$USER
+   FNALURL='https://fndcadoor.fnal.gov:2880/dune/scratch/users'
+
+   justin simple-workflow \
+     --monte-carlo 100 \
+     --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+     --scope usertests --lifetime-days 2 \
+     --rss-mib 24000 \
+     --env NUM_EVENTS=100 \
+     --output-pattern "snv_detsim_*.root:${FNALURL}/${USERF}"
+
+To test with only 2 events:
+
+   justin-test-jobscript \
+     --monte-carlo 1 \
+     --jobscript my_submit.jobscript \
+     --env NUM_EVENTS=2
+
+To stop a workflow:
+
+   justin finish-workflow --workflow-id <ID_DO_WORKFLOW>
+
+To inspect transferred output files:
+
+   /pnfs/dune/scratch/users/<USER>
+
+Important:
+- The workflow output pattern MUST match snv_detsim_*.root.
+- The script in the Git repository is the script used by --jobscript-git.
+- Check Monte Carlo random seeds across different jobs before a large campaign.
+- The intermediate GEN and G4 ROOT files are not transferred by this output pattern.
+- GEN uses flat 4-70 MeV nu_e charged-current interactions (not a time-profiled burst).
+
+INSTRUCTIONS
+
+set -euo pipefail
+
+# -------- Settings (can be overridden through --env) --------
+FCL_FILE_GEN="${FCL_FILE_GEN:-prodmarley_nue_cc_flat_dunevd10kt_1x8x14_3view_30deg.fcl}"
+FCL_FILE_G4="${FCL_FILE_G4:-standard_g4_dunevd10kt_1x8x14_3view_30deg.fcl}"
+FCL_FILE_DETSIM="${FCL_FILE_DETSIM:-standard_detsim_dunevd10kt_1x8x14_3view_30deg.fcl}"
+DUNE_VERSION="${DUNE_VERSION:-v10_26_00d00}"
+DUNE_QUALIFIER="${DUNE_QUALIFIER:-e26:prof}"
+NUM_EVENTS="${NUM_EVENTS:-100}"
+
+# -------- Get justIN work unit --------
+# MC workflows use virtual file identifiers. The justIN helper supplies
+# DID/PFN/RSE metadata. Keep the original DID for the processed list.
+: "${JUSTIN_PATH:?JUSTIN_PATH is not set; run through justIN/test-jobscript}"
+DID_PFN_RSE="$("${JUSTIN_PATH}/justin-get-file")"
+if [[ -z "${DID_PFN_RSE}" ]]; then
+    echo "No justIN Monte Carlo work unit available."
+    exit 1
+fi
+read -r did pfn rse <<< "${DID_PFN_RSE}"
+if [[ -z "${did:-}" || -z "${pfn:-}" ]]; then
+    echo "Cannot parse justin-get-file result: ${DID_PFN_RSE}" >&2
+    exit 1
+fi
+
+# Make file naming safe and unique within the submitted workflow.
+unit_id="$(printf '%s' "${pfn}" | tr -c 'A-Za-z0-9._-' '_')"
+workflow_id="$(printf '%s' "${JUSTIN_WORKFLOW_ID:-workflow}" | tr -c 'A-Za-z0-9._-' '_')"
+id="${workflow_id}_${unit_id}"
+
+first_file="snv_gen_${id}.root"
+second_file="snv_g4_${id}.root"
+third_file="snv_detsim_${id}.root"
+
+echo "DID: ${did}"
+echo "PFN: ${pfn}"
+echo "RSE: ${rse:-unknown}"
+echo "Events per work unit: ${NUM_EVENTS}"
+
+# -------- Setup software --------
+source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
+setup dunesw "${DUNE_VERSION}" -q "${DUNE_QUALIFIER}"
+
+# XRootD preload is optional and only set when available.
+if [[ -n "${XROOTD_LIB:-}" && -f "${XROOTD_LIB}/libXrdPosixPreload.so" ]]; then
+    export LD_PRELOAD="${XROOTD_LIB}/libXrdPosixPreload.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+fi
+
+run_stage() {
+    local stage="$1"; shift
+    local logfile="${stage}.log"
+    echo "===== ${stage}: starting ====="
+    if "$@" > "${logfile}" 2>&1; then
+        tail -n 8 "${logfile}" || true
+        echo "===== ${stage}: completed ====="
+    else
+        local rc=$?
+        echo "===== ${stage}: FAILED (exit ${rc}) =====" >&2
+        tail -n 80 "${logfile}" >&2 || true
+        exit "${rc}"
+    fi
+}
+
+# -------- GEN -> G4 -> DetSim --------
+run_stage gen lar -c "${FCL_FILE_GEN}" -n "${NUM_EVENTS}" -o "${first_file}"
+test -s "${first_file}"
+
+run_stage g4 lar -c "${FCL_FILE_G4}" -s "${first_file}" -o "${second_file}"
+test -s "${second_file}"
+
+run_stage detsim lar -c "${FCL_FILE_DETSIM}" -s "${second_file}" -o "${third_file}"
+test -s "${third_file}"
+
+ls -lh "${first_file}" "${second_file}" "${third_file}"
+grep -H 'TrigReport Events total' gen.log g4.log detsim.log || true
+
+# Mark the virtual input file as successfully processed.
+# The justIN completion list uses PFN entries, as in the original jobscript.
+printf '%s\n' "${pfn}" >> justin-processed-pfns.txt
+
+echo "Success: ${third_file}"
+exit 0
