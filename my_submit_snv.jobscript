@@ -19,7 +19,7 @@ To submit using justIN:
 
    justin simple-workflow \
      --monte-carlo 100 \
-     --jobscript-git GBotogoske/my_grid/my_submit.jobscript:main \
+     --jobscript-git GBotogoske/my_grid/my_submit_sn.jobscript:main \
      --scope usertests --lifetime-days 2 \
      --rss-mib 24000 \
      --env NUM_EVENTS=100 \
