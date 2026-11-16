@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: <<'INSTRUCTIONS'
+: <<'EOF'
 DUNE FD2-VD SUPERNOVA: MARLEY GEN -> Geant4 -> DetSim
 ===================================================
 
@@ -47,7 +47,7 @@ Important:
 - The intermediate GEN and G4 ROOT files are not transferred by this output pattern.
 - GEN uses flat 4-70 MeV nu_e charged-current interactions (not a time-profiled burst).
 
-INSTRUCTIONS
+EOF
 
 set -euo pipefail
 
